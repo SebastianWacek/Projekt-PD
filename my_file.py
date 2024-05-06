@@ -1,70 +1,94 @@
-# Set your Cloudinary credentials
-# ==============================
+import cloudinary
+from cloudinary import CloudinaryImage, uploader, api
+import json
 from dotenv import load_dotenv
+import os
+from tkinter import Tk, Button, filedialog
+
+# Ładowanie zmiennych środowiskowych z pliku .env
 load_dotenv()
 
-# Import the Cloudinary libraries
-# ==============================
-import cloudinary
-from cloudinary import CloudinaryImage
-import cloudinary.uploader
-import cloudinary.api
+# Konfiguracja połączenia z Cloudinary
+cloudinary.config( 
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"), 
+    api_key = os.getenv("CLOUDINARY_API_KEY"), 
+    api_secret = os.getenv("CLOUDINARY_API_SECRET") 
+)
 
-# Import to format the JSON responses
-# ==============================
-import json
+# Funkcja do przesyłania obrazu
+def upload_image_from_disk(image_path):
+    try:
+        # Przesyłanie obrazu na Cloudinary z dysku
+        response = uploader.upload(image_path, unique_filename=False, overwrite=True)
 
-# Set configuration parameter: return "https" URLs by setting secure=True  
-# ==============================
-config = cloudinary.config(secure=True)
+        # Pobieranie adresu URL przesłanego obrazu
+        src_url = CloudinaryImage(response['public_id']).build_url()
 
-# Log the configuration
-# ==============================
-print("****1. Set up and configure the SDK:****\nCredentials: ", config.cloud_name, config.api_key, "\n")
-
-def uploadImage():
-    # Upload the image and get its URL
-    # ==============================
+        # Wyświetlanie adresu URL w konsoli
+        print("****2. Przesyłanie obrazu****\nAdres URL obrazu: ", src_url, "\n")
     
-    # Upload the image.
-    # Set the asset's public ID and allow overwriting the asset with new versions
-    cloudinary.uploader.upload("https://cloudinary-devs.github.io/cld-docs-assets/assets/images/butterfly.jpeg", public_id="quickstart_butterfly", unique_filename = False, overwrite=True)
+    except Exception as e:
+        print("Wystąpił błąd podczas przesyłania obrazu:", e)
 
-    # Build the URL for the image and save it in the variable 'srcURL'
-    srcURL = CloudinaryImage("quickstart_butterfly").build_url()
+# Funkcja do pobierania informacji o zasobie
+def get_asset_info():
+    try:
+        # Pobieranie informacji o obrazie z Cloudinary
+        image_info = api.resource("quickstart_butterfly")
+        
+        # Wyświetlanie informacji o obrazie w konsoli
+        print("****3. Pobieranie informacji o obrazie****\nInformacje o przesłanym obrazie:\n", 
+              json.dumps(image_info, indent=2), "\n")
 
-    # Log the image URL to the console. 
-    # Copy this URL in a browser tab to generate the image on the fly.
-    print("****2. Upload an image****\nDelivery URL: ", srcURL, "\n")
+        # Aktualizacja tagów na podstawie szerokości obrazu
+        width = image_info["width"]
+        tags = "large" if width > 900 else "medium" if width > 500 else "small"
+        update_resp = api.update("quickstart_butterfly", tags=tags)
 
-def getAssetInfo():
-    # Get and use details of the image
-    # ==============================
+        # Wyświetlanie nowych tagów w konsoli
+        print("Nowe tagi: ", update_resp["tags"], "\n")
     
-    # Get image details and save it in the variable 'image_info'.
-    image_info=cloudinary.api.resource("quickstart_butterfly")
-    print("****3. Get and use details of the image****\nUpload response:\n", json.dumps(image_info,indent=2), "\n")
+    except Exception as e:
+        print("Wystąpił błąd podczas pobierania informacji o obrazie:", e)
 
-    # Assign tags to the uploaded image based on its width. Save the response to the update in the variable 'update_resp'.
-    if image_info["width"]>900:
-        update_resp=cloudinary.api.update("quickstart_butterfly", tags = "large")
-    elif image_info["width"]>500:
-        update_resp=cloudinary.api.update("quickstart_butterfly", tags = "medium")
-    else:
-        update_resp=cloudinary.api.update("quickstart_butterfly", tags = "small")
+# Funkcja do transformowania obrazu
+def create_transformation():
+    try:
+        # Tworzenie przekształconego adresu URL obrazu
+        transformed_url = CloudinaryImage("quickstart_butterfly").build_url(width=100, height=150, crop="fill")
 
-    # Log the new tag to the console.
-    print("New tag: ", update_resp["tags"], "\n")
+        # Wyświetlanie przekształconego adresu URL w konsoli
+        print("****4. Transformacja obrazu****\nPrzekształcony adres URL obrazu: ", transformed_url, "\n")
 
-def createTransformation():
-    # Transform the image
-    # ==============================
+        # Możesz również użyć poniższego kodu, aby wygenerować pełny element obrazu HTML:
+        # imageTag = cloudinary.CloudinaryImage("quickstart_butterfly").image(radius="max", effect="sepia")
+        # print("****4. Transformacja obrazu****\nTag obrazu HTML: ", imageTag, "\n")
     
-    transformedURL = CloudinaryImage("quickstart_butterfly").build_url(width = 100, height = 150, crop = "fill")
+    except Exception as e:
+        print("Wystąpił błąd podczas transformacji obrazu:", e)
 
-    # Log the URL to the console
-    print("****4. Transform the image****\nTransfrmation URL: ", transformedURL, "\n")
+# Funkcja do interakcji z użytkownikiem
+def user_interface():
+    def choose_file():
+        # Funkcja wywoływana po naciśnięciu przycisku "Wybierz plik"
+        file_path = filedialog.askopenfilename(title="Wybierz obraz", initialdir="/", filetypes=[("Image files", "*.jpg *.png")])
+        if file_path:
+            # Jeśli użytkownik wybrał plik, przesyłaj obraz na Cloudinary
+            upload_image_from_disk(file_path)
+            get_asset_info()
+            create_transformation()
 
-    # Use this code instead if you want to create a complete HTML image element:
-    # imageTag = cloudinary.CloudinaryImage("quickstart_butterfly").image(radius="max", effect="sepia")
-    # print("****4. Transform the image****\nTransfrmation URL: ", imageTag, "\n")
+    root = Tk()
+    root.title("Wybierz zdjęcie")
+
+    button = Button(root, text="Wybierz plik", command=choose_file)
+    button.pack(padx=20, pady=20)
+
+    root.mainloop()
+
+# Główna funkcja programu
+def main():
+    user_interface()
+
+if __name__ == "__main__":
+    main()
