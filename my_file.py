@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 from tkinter import Tk, Button, filedialog
 
-# Ładowanie zmiennych środowiskowych z pliku .env
+# Ładowanie zmiennych środowiskowych z pliku .envdsad
 load_dotenv()
 
 # Konfiguracja połączenia z Cloudinary
