@@ -3,7 +3,8 @@ from cloudinary import CloudinaryImage, uploader, api
 import json
 from dotenv import load_dotenv
 import os
-from tkinter import Tk, Label, Button, filedialog, Entry, Frame, StringVar
+from tkinter import Tk, Label, Button, filedialog, Entry, Frame, StringVar, PhotoImage, Canvas
+from PIL import Image, ImageTk
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,23 +37,35 @@ def user_interface():
         # Function called after pressing the "Choose File" button
         file_path = filedialog.askopenfilename(title="Select an Image", initialdir="/", filetypes=[("Image files", "*.jpg *.png")])
         if file_path:
-            # If a file is selected, upload the image to Cloudinary with entered tags
-            upload_image_from_disk(file_path, tags_entry.get())
+            # Load and display the selected image in the canvas
+            img = Image.open(file_path)
+            img = img.resize((300, 300), Image.Resampling.NEAREST)  # Resize the image to fit the canvas
+            photo = ImageTk.PhotoImage(img)
+            canvas.image = photo  # Keep a reference so the image is not garbage collected
+            canvas.create_image(0, 0, image=photo, anchor="nw")
+            upload_button.config(command=lambda: upload_image_from_disk(file_path, tags_entry.get()))  # Set command for upload button
 
     root = Tk()
     root.title("Image Selector")
+    root.geometry("400x500")  # Increase the window size
 
     frame = Frame(root)
     frame.pack(padx=20, pady=20)
 
     tags_label = Label(frame, text="Enter Tags (comma-separated):")
-    tags_label.pack(side="left")
+    tags_label.pack()
 
-    tags_entry = Entry(frame)
-    tags_entry.pack(side="left", padx=10)
+    tags_entry = Entry(frame, width=50)
+    tags_entry.pack(padx=10, pady=10)
 
-    button = Button(frame, text="Choose File", command=choose_file)
-    button.pack(side="left")
+    choose_button = Button(frame, text="Choose File", command=choose_file)
+    choose_button.pack(pady=10)
+
+    upload_button = Button(frame, text="Upload Image")
+    upload_button.pack(pady=10)
+
+    canvas = Canvas(root, width=300, height=300)
+    canvas.pack(padx=10, pady=10)
 
     root.mainloop()
 
