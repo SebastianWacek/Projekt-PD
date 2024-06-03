@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image</title>
+    <link href="https://unpkg.com/cropperjs/dist/cropper.css" rel="stylesheet">
+    <style>
+        #imageContainer {
+            position: relative;
+            display: inline-block;
+        }
+        #tagForm {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Image</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" id="fileInput" required>
+        <button type="submit">Upload</button>
+    </form>
+    <div id="imageContainer"></div>
+    <form id="tagForm" style="display: none;">
+        <input type="hidden" name="public_id" id="public_id">
+        <label for="tag">Tag:</label>
+        <input type="text" name="tag" id="tag" required>
+        <label for="x">X:</label>
+        <input type="number" name="x" id="x" readonly>
+        <label for="y">Y:</label>
+        <input type="number" name="y" id="y" readonly>
+        <label for="width">Width:</label>
+        <input type="number" name="width" id="width" readonly>
+        <label for="height">Height:</label>
+        <input type="number" name="height" id="height" readonly>
+        <button type="submit">Add Tag</button>
+    </form>
+    <script src="https://unpkg.com/cropperjs"></script>
+    <script>
+        let cropper;
+        document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const imageContainer = document.getElementById('imageContainer');
+                imageContainer.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = data.image_url;
+                img.id = 'uploadedImage';
+                imageContainer.appendChild(img);
+
+                document.getElementById('public_id').value = data.public_id;
+
+                // Initialize Cropper.js
+                if (cropper) {
+                    cropper.destroy();
+                }
+                cropper = new Cropper(img, {
+                    viewMode: 1,
+                    autoCrop: false,
+                    crop(event) {
+                        document.getElementById('x').value = Math.round(event.detail.x);
+                        document.getElementById('y').value = Math.round(event.detail.y);
+                        document.getElementById('width').value = Math.round(event.detail.width);
+                        document.getElementById('height').value = Math.round(event.detail.height);
+                    }
+                });
+
+                document.getElementById('tagForm').style.display = 'block';
+            } else {
+                alert('Error uploading image: ' + data.message);
+            }
+        });
+
+        document.getElementById('tagForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const jsonData = {
+                tag: formData.get('tag'),
+                x: formData.get('x'),
+                y: formData.get('y'),
+                width: formData.get('width'),
+                height: formData.get('height'),
+                public_id: formData.get('public_id')
+            };
+
+            const response = await fetch('/tag', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                alert('Tag added successfully');
+            } else {
+                alert('Error adding tag: ' + data.message);
+            }
+        });
+    </script>
+</body>
+</html>
